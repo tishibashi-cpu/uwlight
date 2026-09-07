@@ -250,7 +250,39 @@ release.
 would fix the symptom by narrowing the claim, and would leave the next
 lower-bound claim just as untested.
 
-## 16. Planned
+## 16. Coefficients that cannot be told apart still get names
+
+`Scene.attenuation_coefficients` returns beta_D, beta_B and B_inf for the
+Akkaynak-Treibitz image formation model. Under the single-scattering model in
+section 13 both betas are the beam attenuation coefficient c, so on its own
+this adds nothing that `Water.c` does not already give.
+
+Three options were weighed.
+
+**Return them, plainly equal.** Honest, but a caller sees two names for one
+number and may reasonably conclude the package distinguishes them.
+
+**Refuse to provide them.** Also defensible: naming quantities you cannot
+separate suggests you can. Rejected because the need is real. Implementations
+that fit these coefficients bound them by guesswork for want of any physical
+starting point; one such fitting code bounds them with hard-coded sigmoid
+ranges. Withholding c helps nobody.
+
+**Return them with the limitation in the type.** Chosen. The result carries
+`are_distinct = False` and a `note` saying why, so the limitation travels with
+the value instead of living in documentation the caller may not read.
+
+`distance_range_m` is a required argument even though single scattering does
+not use it. Akkaynak & Treibitz's point is that these coefficients vary with
+range, so a value quoted without its range is not a well-defined quantity.
+Accepting the argument and recording it also means the signature does not have
+to change if the model is ever refined.
+
+A test rebuilds the Akkaynak-Treibitz expression from the returned
+coefficients and requires it to match `Scene.observe` exactly, so the two
+routes cannot drift apart.
+
+## 17. Planned
 
 Recorded so the shape of the API can be judged against where it is going.
 

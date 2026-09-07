@@ -113,7 +113,7 @@ determined**, because neither of the following could be obtained:
 - Jerlov, N. G. (1968), *Optical Oceanography*, Elsevier Oceanography Series
   Vol. 5, pp. 118-120. ISBN 978-0-444-40320-9. **No DOI exists**; the DOIs
   `10.4319/lo.1968.13.4.0731` and `10.1126/science.163.3862.64.a` are reviews
-  of the book, not the book.
+  of the book, not the book. Not held by the University of Tsukuba library.
 - Jerlov, N. G. and Koczy, F. (1951), *Reports of the Swedish Deep-Sea
   Expedition 1947-1948*, Vol. 3, pp. 30-71.
 

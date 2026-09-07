@@ -14,7 +14,12 @@ from .colour import (
     spectrum_to_xyz,
     xyz_to_srgb,
 )
-from .scene import Observation, Scene, veiling_radiance_estimate
+from .scene import (
+    AttenuationCoefficients,
+    Observation,
+    Scene,
+    veiling_radiance_estimate,
+)
 from .sources import SOURCES, Source, get_source
 from .water import (
     MissingQuantityError,
@@ -30,6 +35,7 @@ __all__ = [
     "SOURCES",
     "Scene",
     "Observation",
+    "AttenuationCoefficients",
     "veiling_radiance_estimate",
     "spectrum_to_xyz",
     "spectrum_to_srgb",
@@ -50,4 +56,4 @@ __all__ = [
     "MissingQuantityError",
 ]
 
-__version__ = "0.1.2"
+__version__ = "0.1.1"

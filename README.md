@@ -117,6 +117,35 @@ Deliberate limits, all recorded in `DECISIONS.md`:
   sharpness of an image.
 - **Lambertian targets.**
 
+### Coefficients for the Akkaynak-Treibitz form
+
+Underwater vision work usually writes the same physics as
+
+```
+I = J * exp(-beta_D * r) + B_inf * (1 - exp(-beta_B * r))
+```
+
+```python
+p = scene.attenuation_coefficients((0.5, 5.0), veiling_radiance=b_inf)
+p.beta_D, p.beta_B, p.B_inf
+p.are_distinct      # False
+p.note              # why
+```
+
+**`are_distinct` is False, and that is the honest answer.** Under single
+scattering both coefficients are the beam attenuation coefficient c. The
+central claim of Akkaynak & Treibitz (2018) is that in reality they differ and
+vary with range, depth and target reflectance; separating them needs
+measurements this package does not have.
+
+It is still useful. Implementations that fit these coefficients often bound
+them by guesswork for want of a physical starting point. This gives them one,
+and says how far it can be trusted.
+
+`distance_range_m` is required and recorded. A coefficient quoted without the
+range it describes is not a well-defined quantity, so the API does not let you
+omit it.
+
 ## What colour is that
 
 ```python

@@ -25,9 +25,55 @@ Deliberate limitations, recorded in DECISIONS.md section 13:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from .water import MissingQuantityError, Water, _as_array
+
+
+@dataclass(frozen=True)
+class AttenuationCoefficients:
+    """The three coefficients of the Akkaynak-Treibitz image formation model.
+
+    That model, widely used in underwater vision, writes the observed radiance
+    as::
+
+        I = J * exp(-beta_D * r) + B_inf * (1 - exp(-beta_B * r))
+
+    and its central point is that ``beta_D`` and ``beta_B`` are **not** equal
+    and **not** constant: both depend on range, depth and the reflectance of
+    the target.
+
+    Under the single-scattering model this package implements, they are both
+    simply the beam attenuation coefficient c, and :attr:`are_distinct` is
+    False. Separating them needs measurements that this package does not have.
+
+    This is still worth having. Implementations that fit these coefficients
+    commonly bound them by guesswork for want of a physical starting point;
+    ``c`` is that starting point, and :attr:`are_distinct` says plainly how far
+    it can be trusted.
+    """
+
+    wavelengths: np.ndarray
+    beta_D: np.ndarray
+    """Attenuation of the direct signal, 1/m."""
+    beta_B: np.ndarray
+    """Attenuation governing the growth of backscatter, 1/m."""
+    B_inf: np.ndarray | None
+    """Veiling radiance at infinite range, if the caller supplied one."""
+    distance_range_m: tuple[float, float]
+    """The range the caller asked about. Recorded, not used: see the note."""
+    are_distinct: bool
+    """False when beta_D and beta_B could not be told apart."""
+    note: str
+
+    def __repr__(self) -> str:  # pragma: no cover - convenience only
+        lo, hi = self.distance_range_m
+        return (
+            f"<AttenuationCoefficients {lo:g}-{hi:g} m, "
+            f"beta_D {'!=' if self.are_distinct else '=='} beta_B>"
+        )
 
 
 class Observation:
@@ -173,6 +219,63 @@ class Scene:
         if distance_m < 0:
             raise ValueError("distance_m cannot be negative")
         return np.exp(-self._c * distance_m)
+
+    def attenuation_coefficients(
+        self,
+        distance_range_m: tuple[float, float],
+        *,
+        veiling_radiance=None,
+    ) -> AttenuationCoefficients:
+        """Coefficients for the Akkaynak-Treibitz form, from this scene.
+
+        Parameters
+        ----------
+        distance_range_m:
+            The range of distances the coefficients are meant to describe.
+            Required, and recorded on the result. Under single scattering the
+            coefficients do not depend on it, but Akkaynak & Treibitz (2018)
+            showed that in reality they do, so a value quoted without its
+            range is not a well-defined quantity.
+        veiling_radiance:
+            Optional B_inf, carried through unchanged. There is no default;
+            see :meth:`observe`.
+
+        Notes
+        -----
+        ``beta_D`` and ``beta_B`` both come out equal to the beam attenuation
+        coefficient c, because that is what the single-scattering model says.
+        Check :attr:`~AttenuationCoefficients.are_distinct` before treating
+        them as two independent quantities.
+        """
+        low, high = (float(v) for v in distance_range_m)
+        if low < 0 or high < low:
+            raise ValueError(
+                "distance_range_m must be (low, high) with 0 <= low <= high"
+            )
+        b_inf = None
+        if veiling_radiance is not None:
+            b_inf = np.asarray(veiling_radiance, dtype=float)
+            if b_inf.shape != self.wavelengths.shape:
+                raise ValueError(
+                    "veiling_radiance must have the same shape as wavelengths"
+                )
+        c = self._c.copy()
+        return AttenuationCoefficients(
+            wavelengths=self.wavelengths,
+            beta_D=c,
+            beta_B=c.copy(),
+            B_inf=b_inf,
+            distance_range_m=(low, high),
+            are_distinct=False,
+            note=(
+                "beta_D and beta_B are both the beam attenuation coefficient "
+                "c, because this package implements single scattering. "
+                "Akkaynak & Treibitz (2018) show that in reality they differ "
+                "and vary with range, depth and target reflectance. Use these "
+                "as a physical starting point, not as two measured "
+                "quantities."
+            ),
+        )
 
     def observe(self, reflectance, distance_m: float, *,
                 veiling_radiance) -> Observation:

@@ -217,3 +217,65 @@ def test_sound_water_does_not_warn():
         warnings.simplefilter("error")
         s = scene("III")
         s.observe(flat(), 2.0, veiling_radiance=flat(0.01))
+
+
+# -- Akkaynak-Treibitz coefficients --------------------------------------
+
+
+def test_coefficients_are_the_beam_attenuation():
+    s = scene()
+    p = s.attenuation_coefficients((0.5, 5.0))
+    assert np.allclose(p.beta_D, s.water.c(WL))
+    assert np.allclose(p.beta_B, s.water.c(WL))
+
+
+def test_the_coefficients_say_they_are_not_distinct():
+    """The whole point of Akkaynak & Treibitz is that these differ."""
+    p = scene().attenuation_coefficients((0.5, 5.0))
+    assert p.are_distinct is False
+    assert "single scattering" in p.note
+    assert "Akkaynak" in p.note
+
+
+def test_the_distance_range_is_required_and_recorded():
+    with pytest.raises(TypeError):
+        scene().attenuation_coefficients()
+    p = scene().attenuation_coefficients((1.0, 8.0))
+    assert p.distance_range_m == (1.0, 8.0)
+
+
+def test_a_backwards_or_negative_range_is_refused():
+    s = scene()
+    for bad in ((5.0, 1.0), (-1.0, 5.0)):
+        with pytest.raises(ValueError, match="0 <= low <= high"):
+            s.attenuation_coefficients(bad)
+
+
+def test_veiling_radiance_is_carried_through_if_given():
+    s = scene()
+    assert s.attenuation_coefficients((0.5, 5.0)).B_inf is None
+    b_inf = flat(0.02)
+    p = s.attenuation_coefficients((0.5, 5.0), veiling_radiance=b_inf)
+    assert np.allclose(p.B_inf, b_inf)
+
+
+def test_the_coefficients_reproduce_observe():
+    """I = J exp(-beta_D r) + B_inf (1 - exp(-beta_B r)) must match observe."""
+    s = scene()
+    b_inf = flat(0.02)
+    r = 3.0
+    obs = s.observe(flat(0.8), r, veiling_radiance=b_inf)
+    p = s.attenuation_coefficients((0.0, 10.0), veiling_radiance=b_inf)
+
+    target = 0.8 * s.downwelling / np.pi
+    rebuilt = (target * np.exp(-p.beta_D * r)
+               + p.B_inf * (1 - np.exp(-p.beta_B * r)))
+    assert np.allclose(rebuilt, obs.radiance)
+
+
+def test_the_result_does_not_alias_the_scene():
+    s = scene()
+    p = s.attenuation_coefficients((0.5, 5.0))
+    p.beta_D[0] = 999.0
+    assert not np.allclose(s.water.c(WL)[0], 999.0)
+    assert not np.allclose(p.beta_B[0], 999.0)
